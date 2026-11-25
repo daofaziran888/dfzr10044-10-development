@@ -151,9 +151,10 @@ class LakeStore:
     # ---- 文件操作 ----
 
     def register_file(
-        self, lake_table: str, partition_key: str, rows: int, bytes_: int, manifest: str | None = None
+        self, lake_table: str, partition_key: str, rows: int, bytes_: int,
+        manifest: str | None = None, file_id: str | None = None,
     ) -> PartitionFile:
-        file_id = f"{lake_table}-p{partition_key}-{uuid.uuid4().hex[:8]}"
+        file_id = file_id or f"{lake_table}-p{partition_key}-{uuid.uuid4().hex[:8]}"
         checksum = manifest or hashlib.md5(f"{lake_table}:{partition_key}:{time.time()}".encode()).hexdigest()
         pf = PartitionFile(
             file_id=file_id,
@@ -204,8 +205,9 @@ class LakeStore:
         parent_snapshot: str | None = None,
         added_rows: int = 0,
         deleted_rows: int = 0,
+        snapshot_id: str | None = None,
     ) -> LakeSnapshot:
-        snap_id = f"snap-{lake_table}-{uuid.uuid4().hex[:8]}"
+        snap_id = snapshot_id or f"snap-{lake_table}-{uuid.uuid4().hex[:8]}"
         manifest = hashlib.md5(
             ",".join(sorted(file_ids)).encode()
         ).hexdigest()
@@ -394,6 +396,10 @@ class LakeStore:
         self._write_lock.release(lake_table)
 
     # ---- 统计快照 ----
+
+    def lake_tables(self) -> list[str]:
+        """列出已登记文件或快照的全部湖表。"""
+        return sorted(set(self._files) | set(self._snapshots))
 
     def stats_snapshot(self, lake_table: str) -> dict[str, Any]:
         """生成湖表统计画像快照。"""

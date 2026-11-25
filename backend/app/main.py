@@ -8,11 +8,14 @@ from __future__ import annotations
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from app.bootstrap import bootstrap_lake_store
 from app.config import settings
 from app.routers import ROUTERS
 from app.store import store
 
 app = FastAPI(title="湖表工坊 · 湖表分区演化与小文件归并平台", version="1.0.0")
+
+bootstrap_lake_store()
 
 app.add_middleware(
     CORSMiddleware,

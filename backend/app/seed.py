@@ -529,5 +529,79 @@ SEED_ROWS: dict[str, list[dict[str, Any]]] = {
             "变更前值": "可用", "变更后值": "已回退",
             "操作者标识": "data_eng_02", "操作时间": "2026-11-02T12:00:00",
         },
+        {
+            "id": 4, "status": "已核查", "pending": False, "abnormal": False,
+            "条目编号": "AUD-RCL-101", "所属湖表": "ods_user_behavior",
+            "操作类型": "回收确认", "操作对象": "file-F-20260801",
+            "变更前值": "删除事实：2026-11-20T02:14:08",
+            "变更后值": "已释放 100 字节",
+            "操作者标识": "audit", "操作时间": "2026-11-20T02:16:30",
+            "_kind": "reclaim_confirmation",
+            "_reclaim_id": "RCL-ODS-011",
+            "_voucher_id": "RV-0001",
+            "_file_id": "file-F-20260801",
+            "_file_bytes": 100,
+            "_partition_key": "20260801",
+            "_snapshot_id": "snap-ods_user_behavior-a11f",
+            "_deletion_fact": "2026-11-20T02:14:08",
+            "_lake_table": "ods_user_behavior",
+        },
+    ],
+    "reclaim_voucher": [
+        {
+            "id": 1, "status": "已释放", "pending": False, "abnormal": False,
+            "凭证编号": "RV-0001", "回收号": "RCL-ODS-011",
+            "所属湖表": "ods_user_behavior", "分区标识": "20260801",
+            "快照标识": "snap-ods_user_behavior-a11f", "文件标识": "file-F-20260801",
+            "文件字节数": 100, "删除事实": "2026-11-20T02:14:08",
+            "对账状态": "已释放", "审计条目": "AUD-RCL-101",
+            "操作者标识": "data_eng_01", "建立时间": "2026-11-20T02:10:00",
+        },
+        {
+            "id": 2, "status": "待回收", "pending": True, "abnormal": False,
+            "凭证编号": "RV-0002", "回收号": "RCL-ODS-011",
+            "所属湖表": "ods_user_behavior", "分区标识": "20260801",
+            "快照标识": "snap-ods_user_behavior-a11f", "文件标识": "file-G-20260801",
+            "文件字节数": 40, "删除事实": "",
+            "对账状态": "待回收", "审计条目": "",
+            "操作者标识": "data_eng_01", "建立时间": "2026-11-20T02:10:00",
+        },
+        {
+            "id": 3, "status": "待对账", "pending": True, "abnormal": True,
+            "凭证编号": "RV-0003", "回收号": "RCL-ODS-012",
+            "所属湖表": "ods_payment", "分区标识": "20260715",
+            "快照标识": "snap-ods_payment-b221", "文件标识": "file-H-20260715",
+            "文件字节数": 512, "删除事实": "",
+            "对账状态": "待对账", "审计条目": "",
+            "对账说明": "存储中已无该文件，可能是其他回收操作删除，先标待对账",
+            "操作者标识": "data_eng_02", "建立时间": "2026-11-21T03:00:00",
+        },
+        {
+            "id": 4, "status": "留存", "pending": False, "abnormal": False,
+            "凭证编号": "RV-0004", "回收号": "RCL-ODS-012",
+            "所属湖表": "ods_payment", "分区标识": "20260715",
+            "快照标识": "snap-ods_payment-b221", "文件标识": "file-R-20260715",
+            "文件字节数": 256, "删除事实": "",
+            "对账状态": "留存", "审计条目": "",
+            "对账说明": "仍有快照引用，不能回收",
+            "操作者标识": "data_eng_02", "建立时间": "2026-11-21T03:00:00",
+        },
     ],
 }
+
+
+# 回收凭证演示所需的存储态：文件是否仍在存储里，以及哪些快照仍引用留存文件。
+# 由服务启动时幂等灌入，测试直接构造自己的数据，不依赖这里。
+RECLAIM_DEMO_FILES: list[dict[str, Any]] = [
+    # F 已在本回收中删除，存储里不应再有；G 尚未删除。
+    {"lake_table": "ods_user_behavior", "file_id": "file-G-20260801",
+     "partition_key": "20260801", "file_bytes": 40, "rows": 1},
+    # R 被快照引用，属于留存文件。
+    {"lake_table": "ods_payment", "file_id": "file-R-20260715",
+     "partition_key": "20260715", "file_bytes": 256, "rows": 2},
+]
+
+RECLAIM_DEMO_SNAPSHOTS: list[dict[str, Any]] = [
+    {"lake_table": "ods_payment", "snapshot_id": "snap-ods_payment-b221",
+     "file_ids": ["file-R-20260715"], "status": "available"},
+]

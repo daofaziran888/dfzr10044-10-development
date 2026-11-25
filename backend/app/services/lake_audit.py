@@ -68,3 +68,38 @@ class LakeAuditService(BaseModuleService):
             "sealed_count": sealed,
             "seal_time": time.time(),
         }
+
+    def audit_entry_detail(self, entry_id: int) -> dict[str, Any] | None:
+        """审计详情：回收确认条目回溯到对应回收凭证与删除事实。"""
+        from app.services.reclaim_voucher import ReclaimVoucherService
+
+        entry = store.find(self.MODULE, entry_id)
+        if entry is None:
+            return None
+        detail: dict[str, Any] = {"entry": entry, "reclaim_voucher": None}
+        if entry.get("_kind") != "reclaim_confirmation":
+            return detail
+
+        lake_table = str(entry.get("所属湖表", ""))
+        reclaim_id = str(entry.get("_reclaim_id", ""))
+        file_id = str(entry.get("_file_id", ""))
+        vouchers = ReclaimVoucherService()
+        view = vouchers.voucher_view(lake_table, reclaim_id)
+        voucher = next(
+            (item for group in view["groups"] for item in group["items"]
+             if item["file_id"] == file_id),
+            None,
+        )
+        detail["reclaim_voucher"] = {
+            "lake_table": lake_table,
+            "reclaim_id": reclaim_id,
+            "file_id": file_id,
+            "file_bytes": entry.get("_file_bytes"),
+            "deletion_fact": entry.get("_deletion_fact"),
+            "voucher_code": entry.get("_voucher_id"),
+            "state": voucher["state"] if voucher else "未知",
+            "partition_key": entry.get("_partition_key"),
+            "snapshot_id": entry.get("_snapshot_id"),
+            "deletion_facts": view["audit_facts"],
+        }
+        return detail
